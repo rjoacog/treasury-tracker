@@ -226,6 +226,10 @@ function buildDateRange(days: number): { fromDate: string; toDate: string; dates
   };
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Backfill snapshots for the last N days for a project.
  *
@@ -238,21 +242,29 @@ export async function backfillSnapshots(
   projectId: string,
   days = 7
 ): Promise<BackfillSnapshotsResult> {
-  if (days <= 0) {
+  const effectiveDays = Math.min(Math.max(days, 0), 2);
+
+  if (effectiveDays <= 0) {
     return {
       fromDate: "",
       toDate: "",
-      days,
+      days: effectiveDays,
       totalWallets: 0,
       skippedExisting: 0,
       inserted: 0
     };
   }
 
+  if (days > 2) {
+    console.warn(
+      `backfillSnapshots called with days=${days}, capping to ${effectiveDays} days to protect RPC usage.`
+    );
+  }
+
   const supabase = createServiceSupabaseClient();
   const adapter = getChainAdapter("ethereum-mainnet");
 
-  const { fromDate, toDate, dates } = buildDateRange(days);
+  const { fromDate, toDate, dates } = buildDateRange(effectiveDays);
 
   // 1) Fetch wallets for the project
   const { data: wallets, error: walletsError } = await supabase
@@ -321,6 +333,8 @@ export async function backfillSnapshots(
 
   for (const wallet of projectWallets) {
     try {
+      // Small delay between wallets to avoid hitting RPC rate limits too aggressively.
+      await sleep(150);
       const transactions = await adapter.getTransactions(
         wallet.address,
         rangeStart,

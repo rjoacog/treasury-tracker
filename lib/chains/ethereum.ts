@@ -70,6 +70,10 @@ async function rpcCall<T>(method: string, params: unknown[] = []): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text();
+    if (res.status === 429) {
+      console.error("Alchemy RPC rate limit hit (429). Response:", text);
+      throw new Error("Alchemy rate limit (429 Too Many Requests)");
+    }
     throw new Error(`RPC request failed: ${res.status} ${res.statusText} - ${text}`);
   }
 
