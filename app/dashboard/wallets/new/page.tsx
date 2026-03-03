@@ -1,27 +1,22 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { createServerSupabaseClient } from "../../../../lib/supabase";
+import { redirect } from "next/navigation";
+import { createServerSupabaseClient } from "../../../../lib/supabaseServer";
 import { CreateWalletForm } from "./CreateWalletForm";
 
 export default async function NewWalletPage() {
-  const supabase = createServerSupabaseClient();
-  const userId = process.env.DEFAULT_USER_ID;
+  const supabase = await createServerSupabaseClient();
 
-  if (!userId) {
-    return (
-      <section className="space-y-4">
-        <p className="text-sm text-slate-400">
-          Wallet creation is not configured. Set DEFAULT_USER_ID in .env.local.
-        </p>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-900"
-        >
-          Back to dashboard
-        </Link>
-      </section>
-    );
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    redirect("/login");
   }
+
+  const userId = user.id;
 
   const { data: projects, error: projectsError } = await supabase
     .from("projects")
@@ -80,7 +75,7 @@ export default async function NewWalletPage() {
           .
         </p>
       </header>
-      <CreateWalletForm projectId={selectedProjectId} />
+      <CreateWalletForm projectId={selectedProjectId ?? userProjects[0].id} />
     </section>
   );
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "../../../lib/supabase";
+import { createServerSupabaseClient } from "../../../lib/supabaseServer";
 
 export async function POST(request: Request) {
   try {
@@ -15,16 +15,19 @@ export async function POST(request: Request) {
     }
 
     const address = rawAddress.trim().toLowerCase();
-    const userId = process.env.DEFAULT_USER_ID;
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Server not configured for wallet creation (missing DEFAULT_USER_ID)." },
-        { status: 503 }
-      );
+    const supabase = await createServerSupabaseClient();
+
+    const {
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabase = createServerSupabaseClient();
+    const userId = user.id;
 
     // Ensure project belongs to the logged-in user
     const { data: project, error: projectError } = await supabase
@@ -97,16 +100,18 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const userId = process.env.DEFAULT_USER_ID;
+    const supabase = await createServerSupabaseClient();
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Server not configured for wallet deletion (missing DEFAULT_USER_ID)." },
-        { status: 503 }
-      );
+    const {
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabase = createServerSupabaseClient();
+    const userId = user.id;
 
     const { data: wallet, error: walletError } = await supabase
       .from("wallets")

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
-import { createServerSupabaseClient } from "../../../lib/supabase";
+import { redirect } from "next/navigation";
+import { createServerSupabaseClient } from "../../../lib/supabaseServer";
 
 type SnapshotRow = {
   date: string;
@@ -34,8 +35,18 @@ function slugifyProjectName(name: string): string {
 
 export async function GET() {
   try {
-    const supabase = createServerSupabaseClient();
-    const userId = process.env.DEFAULT_USER_ID;
+    const supabase = await createServerSupabaseClient();
+
+    const {
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      redirect("/login");
+    }
+
+    const userId = user.id;
 
     const { data: projects, error: projectsError } = await supabase
       .from("projects")
@@ -48,9 +59,7 @@ export async function GET() {
     }
 
     const allProjects = projects ?? [];
-    const userProjects = userId
-      ? allProjects.filter((project) => project.user_id === userId)
-      : allProjects;
+    const userProjects = allProjects.filter((project) => project.user_id === userId);
 
     if (!userProjects.length) {
       return new Response("No projects available for this user.", { status: 400 });

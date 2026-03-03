@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "../../../lib/supabase";
+import { createServerSupabaseClient } from "../../../lib/supabaseServer";
 
 export async function POST(request: Request) {
   try {
@@ -13,15 +13,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const userId = process.env.DEFAULT_USER_ID;
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Server not configured for project creation (missing DEFAULT_USER_ID)." },
-        { status: 503 }
-      );
+    const supabase = await createServerSupabaseClient();
+
+    const {
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabase = createServerSupabaseClient();
+    const userId = user.id;
+
     const { data, error } = await supabase
       .from("projects")
       .insert({ user_id: userId, name: name.trim() })

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "../../../../lib/supabase";
 import { generateDailySnapshot } from "../../../../lib/snapshotEngine";
 
-export async function GET(request: Request) {
+async function handleCron(request: Request) {
   const authHeader =
     request.headers.get("authorization") ?? request.headers.get("Authorization");
 
@@ -97,5 +97,13 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: Request) {
+  return handleCron(request);
+}
+
+export async function POST(request: Request) {
+  return handleCron(request);
 }
 

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "../../../../lib/supabase";
+import { createServiceSupabaseClient } from "../../../../lib/supabase";
 import { generateDailySnapshot } from "../../../../lib/snapshotEngine";
 
 export async function GET() {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = createServiceSupabaseClient();
 
     const { data: projects, error: projectsError } = await supabase
       .from("projects")

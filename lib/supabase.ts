@@ -16,34 +16,6 @@ function assertServerContext(forClient: string) {
   }
 }
 
-export function createBrowserSupabaseClient(): SupabaseClient<Database> {
-  const url = getSupabaseUrl();
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!key) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY for browser Supabase client.");
-  }
-
-  return createClient<Database>(url, key);
-}
-
-export function createServerSupabaseClient(): SupabaseClient<Database> {
-  assertServerContext("createServerSupabaseClient");
-
-  const url = getSupabaseUrl();
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!key) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY for server Supabase client.");
-  }
-
-  return createClient<Database>(url, key, {
-    auth: {
-      persistSession: false
-    }
-  });
-}
-
 export function createServiceSupabaseClient(): SupabaseClient<Database> {
   assertServerContext("createServiceSupabaseClient");
 

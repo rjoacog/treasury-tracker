@@ -1,8 +1,9 @@
 import { BalanceChart } from "./BalanceChart";
 import { GenerateSnapshotButton } from "./GenerateSnapshotButton";
 import { WalletsTable } from "./WalletsTable";
-import { createServerSupabaseClient } from "../../lib/supabase";
+import { createServerSupabaseClient } from "../../lib/supabaseServer";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 type SnapshotRow = {
   date: string;
@@ -62,9 +63,18 @@ function truncateAddress(address: string | null | undefined): string {
 }
 
 export default async function DashboardPage() {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
-  const userId = process.env.DEFAULT_USER_ID;
+  const {
+    data: { user },
+    error: userError
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    redirect("/login");
+  }
+
+  const userId = user.id;
 
   const { data: projects, error: projectsError } = await supabase
     .from("projects")
@@ -76,9 +86,7 @@ export default async function DashboardPage() {
   }
 
   const allProjects = projects ?? [];
-  const userProjects = userId
-    ? allProjects.filter((project) => project.user_id === userId)
-    : allProjects;
+  const userProjects = allProjects.filter((project) => project.user_id === userId);
 
   if (!userProjects.length) {
     return (

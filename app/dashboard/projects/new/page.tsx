@@ -1,22 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createServerSupabaseClient } from "../../../../lib/supabaseServer";
 import { CreateProjectForm } from "./CreateProjectForm";
 
 export default async function NewProjectPage() {
-  const userId = process.env.DEFAULT_USER_ID;
-  if (!userId) {
-    return (
-      <section className="space-y-4">
-        <p className="text-sm text-slate-400">
-          Project creation is not configured. Set DEFAULT_USER_ID in .env.local.
-        </p>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-900"
-        >
-          Back to dashboard
-        </Link>
-      </section>
-    );
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    redirect("/login");
   }
 
   return (

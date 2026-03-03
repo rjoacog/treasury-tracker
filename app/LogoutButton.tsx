@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { createBrowserSupabaseClient } from "../lib/supabase";
+import { createBrowserSupabaseClient } from "../lib/supabaseBrowser";
 
 const supabase = createBrowserSupabaseClient();
 
