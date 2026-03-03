@@ -131,15 +131,13 @@ type AlchemyTransfer = {
 
 type AlchemyTransfersResult = {
   transfers: AlchemyTransfer[];
+  pageKey?: string;
 };
 
 async function getAddressTransfers(
   params: Record<string, unknown>
-): Promise<AlchemyTransfer[]> {
-  const result = await rpcCall<AlchemyTransfersResult>("alchemy_getAssetTransfers", [
-    params
-  ]);
-  return result.transfers ?? [];
+): Promise<AlchemyTransfersResult> {
+  return rpcCall<AlchemyTransfersResult>("alchemy_getAssetTransfers", [params]);
 }
 
 export async function getTransactions(
@@ -147,18 +145,43 @@ export async function getTransactions(
   fromDate: Date,
   toDate: Date
 ): Promise<EthereumTransaction[]> {
+  // Estimate block range for the given time window, anchored at the latest block.
+  const latestBlock = await getLatestBlockNumber();
+  const seconds =
+    (toDate.getTime() - fromDate.getTime()) / 1000 > 0
+      ? (toDate.getTime() - fromDate.getTime()) / 1000
+      : 0;
+  const approxBlocks = Math.ceil(seconds / 12); // ~12s block time
+  const padding = Math.ceil(approxBlocks * 0.2) + 200; // add some buffer
+  const toBlock = latestBlock;
+  const fromBlock = Math.max(0, toBlock - approxBlocks - padding);
+
   const baseParams = {
     category: ["external", "internal", "erc20", "erc721", "erc1155"],
     withMetadata: true,
-    maxCount: "0x3e8"
+    maxCount: "0x3e8", // 1000 per page
+    order: "desc",
+    fromBlock: toBlockTag(fromBlock),
+    toBlock: toBlockTag(toBlock),
+    fromAddress: address
   };
 
-  const [sent, received] = await Promise.all([
-    getAddressTransfers({ ...baseParams, fromAddress: address }),
-    getAddressTransfers({ ...baseParams, toAddress: address })
-  ]);
+  const mergedRaw: AlchemyTransfer[] = [];
+  let pageKey: string | undefined;
+  let pages = 0;
 
-  const mergedRaw: AlchemyTransfer[] = [...sent, ...received];
+  // Paginate a few pages backwards in time to cover high-activity wallets.
+  while (pages < 5) {
+    const params = pageKey ? { ...baseParams, pageKey } : baseParams;
+    const { transfers, pageKey: nextPageKey } = await getAddressTransfers(params);
+    if (!transfers || transfers.length === 0) {
+      break;
+    }
+    mergedRaw.push(...transfers);
+    pages += 1;
+    pageKey = nextPageKey;
+    if (!pageKey) break;
+  }
 
   const mapped: EthereumTransaction[] = [];
 
